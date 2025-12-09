@@ -1,18 +1,12 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import crypto from 'crypto';
-import fetch from 'node-fetch';
 
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'mysecret';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método não permitido' });
-  }
-
-  const { targetUrl, payload } = req.body;
+export async function POST(req: Request) {
+  const { targetUrl, payload } = await req.json();
 
   if (!targetUrl || !payload) {
-    return res.status(400).json({ error: 'targetUrl e payload são obrigatórios' });
+    return Response.json({ error: 'targetUrl e payload são obrigatórios' }, { status: 400 });
   }
 
   const payloadString = JSON.stringify(payload);
@@ -20,6 +14,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .createHmac('sha256', WEBHOOK_SECRET)
     .update(payloadString)
     .digest('hex');
+
+  console.log('signature', signature)
+  console.log('payloadString', payloadString)
 
   try {
     const response = await fetch(targetUrl, {
@@ -33,13 +30,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (response.ok) {
       console.log('Webhook enviado com sucesso');
-      return res.status(200).json({ status: 'enviado' });
+      return Response.json({ status: 'enviado' });
     } else {
       console.error('Erro ao enviar webhook:', response.statusText);
-      return res.status(500).json({ error: 'Falha ao enviar webhook' });
+      return Response.json({ error: 'Falha ao enviar webhook' }, { status: 500 });
     }
   } catch (err) {
     console.error('Erro na requisição:', err);
-    return res.status(500).json({ error: 'Erro na requisição' });
+    return Response.json({ error: 'Erro na requisição' }, { status: 500 });
   }
 }
